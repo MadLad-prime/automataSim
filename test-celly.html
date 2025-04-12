@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Conway's Game of Life - Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #121212;
+      color: #eee;
+    }
+    canvas {
+      border: 1px solid #333;
+      margin: 20px;
+      background: #000;
+    }
+    button {
+      margin: 5px;
+      padding: 8px 16px;
+      background: #333;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #444;
+    }
+  </style>
+</head>
+<body>
+  <h1>Conway's Game of Life - Test</h1>
+  <div>
+    <button id="startBtn">Start</button>
+    <button id="randomBtn">Randomize</button>
+    <button id="clearBtn">Clear</button>
+  </div>
+  <canvas id="gameCanvas" width="600" height="400"></canvas>
+
+  <script>
+    // Simple Game of Life implementation
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const startBtn = document.getElementById('startBtn');
+    const randomBtn = document.getElementById('randomBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    
+    const cellSize = 10;
+    const cols = Math.floor(canvas.width / cellSize);
+    const rows = Math.floor(canvas.height / cellSize);
+    let grid = [];
+    let running = false;
+    let animationId = null;
+    
+    // Initialize grid
+    function initGrid() {
+      grid = Array(rows).fill().map(() => Array(cols).fill(0));
+      drawGrid();
+      console.log("Grid initialized:", rows, "x", cols);
+    }
+    
+    // Randomize grid
+    function randomizeGrid() {
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          grid[y][x] = Math.random() > 0.7 ? 1 : 0;
+        }
+      }
+      drawGrid();
+      console.log("Grid randomized");
+    }
+    
+    // Clear grid
+    function clearGrid() {
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          grid[y][x] = 0;
+        }
+      }
+      drawGrid();
+      console.log("Grid cleared");
+    }
+    
+    // Draw grid
+    function drawGrid() {
+      // Clear canvas
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw cells
+      ctx.fillStyle = '#4CAF50';
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          if (grid[y][x] === 1) {
+            ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+          }
+        }
+      }
+      
+      // Draw grid lines
+      ctx.strokeStyle = '#333';
+      ctx.lineWidth = 1;
+      for (let x = 0; x <= cols; x++) {
+        ctx.beginPath();
+        ctx.moveTo(x * cellSize, 0);
+        ctx.lineTo(x * cellSize, canvas.height);
+        ctx.stroke();
+      }
+      for (let y = 0; y <= rows; y++) {
+        ctx.beginPath();
+        ctx.moveTo(0, y * cellSize);
+        ctx.lineTo(canvas.width, y * cellSize);
+        ctx.stroke();
+      }
+    }
+    
+    // Calculate next generation
+    function nextGeneration() {
+      const nextGrid = Array(rows).fill().map(() => Array(cols).fill(0));
+      
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          const neighbors = countNeighbors(x, y);
+          const cell = grid[y][x];
+          
+          if (cell === 1 && (neighbors < 2 || neighbors > 3)) {
+            nextGrid[y][x] = 0; // Dies
+          } else if (cell === 0 && neighbors === 3) {
+            nextGrid[y][x] = 1; // Born
+          } else {
+            nextGrid[y][x] = cell; // Stays the same
+          }
+        }
+      }
+      
+      grid = nextGrid;
+      drawGrid();
+    }
+    
+    // Count neighbors
+    function countNeighbors(x, y) {
+      let count = 0;
+      for (let i = -1; i <= 1; i++) {
+        for (let j = -1; j <= 1; j++) {
+          if (i === 0 && j === 0) continue;
+          
+          const nx = (x + i + cols) % cols;
+          const ny = (y + j + rows) % rows;
+          
+          count += grid[ny][nx];
+        }
+      }
+      return count;
+    }
+    
+    // Game loop
+    function gameLoop() {
+      if (running) {
+        nextGeneration();
+        setTimeout(() => {
+          animationId = requestAnimationFrame(gameLoop);
+        }, 100); // 10 FPS
+      }
+    }
+    
+    // Toggle running state
+    function toggleRunning() {
+      running = !running;
+      startBtn.textContent = running ? 'Pause' : 'Start';
+      
+      if (running) {
+        gameLoop();
+      } else if (animationId) {
+        cancelAnimationFrame(animationId);
+      }
+    }
+    
+    // Event listeners
+    startBtn.addEventListener('click', toggleRunning);
+    randomBtn.addEventListener('click', randomizeGrid);
+    clearBtn.addEventListener('click', clearGrid);
+    
+    // Canvas click handler
+    canvas.addEventListener('click', (event) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = Math.floor((event.clientX - rect.left) / cellSize);
+      const y = Math.floor((event.clientY - rect.top) / cellSize);
+      
+      if (x >= 0 && x < cols && y >= 0 && y < rows) {
+        grid[y][x] = 1 - grid[y][x]; // Toggle cell state
+        drawGrid();
+      }
+    });
+    
+    // Initialize
+    initGrid();
+    console.log("Game of Life Test initialized");
+  </script>
+</body>
+</html>

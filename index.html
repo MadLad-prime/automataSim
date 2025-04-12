@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Conway's Game of Life - Interactive Cellular Automata</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <h1>Conway's Game of Life</h1>
+    <div class="tooltip">
+        <button class="theme-toggle" id="themeToggle">🌓</button>
+        <span class="tooltiptext">Toggle Light/Dark Mode</span>
+    </div>
+  </header>
+
+  <div class="container fade-in">
+    <div class="canvas-container">
+      <canvas id="game"></canvas>
+      <div class="overlay" id="canvasOverlay">Click/Drag to Draw</div>
+    </div>
+
+    <div class="controls controls-group">
+         <div class="tooltip">
+            <button id="toggleBtn">Start</button>
+            <span class="tooltiptext">Start/Pause Simulation (Spacebar)</span>
+         </div>
+         <div class="tooltip">
+            <button id="stepBtn">Step</button>
+            <span class="tooltiptext">Advance One Generation (Right Arrow)</span>
+         </div>
+         <div class="tooltip">
+            <button id="randomBtn">Randomize</button>
+            <span class="tooltiptext">Fill grid randomly based on density (R)</span>
+         </div>
+         <div class="tooltip">
+            <button id="clearBtn">Clear</button>
+            <span class="tooltiptext">Clear the grid (C)</span>
+         </div>
+         <div class="tooltip">
+            <button id="gridBtn" class="active">Toggle Grid</button>
+            <span class="tooltiptext">Show/Hide Grid Lines (G)</span>
+         </div>
+    </div>
+
+    <div class="settings-grid">
+        <div class="slider-container">
+          <label for="speedSlider">Speed:</label>
+          <input type="range" id="speedSlider" min="1" max="60" value="15">
+          <span id="speedValue">15 FPS</span>
+        </div>
+
+        <div class="slider-container">
+          <label for="densitySlider">Density:</label>
+          <input type="range" id="densitySlider" min="1" max="100" value="30">
+          <span id="densityValue">30%</span>
+        </div>
+
+        <div class="slider-container">
+          <label for="zoomSlider">Zoom:</label>
+          <input type="range" id="zoomSlider" min="1" max="30" value="10">
+          <span id="zoomValue">10px</span>
+        </div>
+    </div>
+
+
+    <div class="advanced-toggle" id="advancedToggle" role="button" aria-expanded="false" aria-controls="advancedSettings">
+      <span class="arrow">▾</span> Advanced Settings & Patterns <span class="arrow">▾</span>
+    </div>
+
+    <div class="advanced-settings" id="advancedSettings">
+        <div class="settings-grid">
+             <div class="setting-item tooltip">
+                <label for="aliveColorPicker">Cell Color:</label>
+                <input type="color" id="aliveColorPicker" value="#4CAF50">
+                <span class="tooltiptext">Color of living cells</span>
+            </div>
+
+            <div class="setting-item tooltip">
+                <label for="gridColorPicker">Grid Color:</label>
+                <input type="color" id="gridColorPicker" value="#333333">
+                <span class="tooltiptext">Color of grid lines</span>
+            </div>
+
+            <div class="setting-item tooltip">
+                <label for="drawModeSelect">Draw Mode:</label>
+                <select id="drawModeSelect">
+                  <option value="draw">Draw</option>
+                  <option value="erase">Erase</option>
+                  <option value="toggle">Toggle</option>
+                  <option value="pattern">Place Pattern</option>
+                </select>
+                 <span class="tooltiptext">Action when clicking/dragging on grid (D/E/T/P)</span>
+            </div>
+
+             <div class="setting-item tooltip">
+                <label for="wrapEdgesCheck">Wrap Edges:</label>
+                <input type="checkbox" id="wrapEdgesCheck">
+                <span class="tooltiptext">Cells wrap around edges (toroidal) (W)</span>
+            </div>
+
+            <div class="setting-item tooltip">
+                <label for="showNewbornCheck">Highlight New:</label>
+                <input type="checkbox" id="showNewbornCheck">
+                <span class="tooltiptext">Briefly highlight newly born cells</span>
+            </div>
+             <div class="setting-item tooltip">
+                <label for="showDyingCheck">Highlight Dying:</label>
+                <input type="checkbox" id="showDyingCheck">
+                <span class="tooltiptext">Briefly highlight dying cells</span>
+            </div>
+
+            <div class="setting-item tooltip">
+              <label for="colsInput">Grid Cols:</label>
+              <input type="number" id="colsInput" min="10" max="500" value="60">
+              <span class="tooltiptext">Number of columns (width)</span>
+            </div>
+
+            <div class="setting-item tooltip">
+              <label for="rowsInput">Grid Rows:</label>
+              <input type="number" id="rowsInput" min="10" max="500" value="40">
+               <span class="tooltiptext">Number of rows (height)</span>
+            </div>
+
+            <div class="tooltip">
+                <button id="resizeBtn">Resize Grid</button>
+                <span class="tooltiptext">Apply new grid dimensions (clears grid)</span>
+            </div>
+
+        </div>
+
+
+        <h2>Preset Patterns</h2>
+        <p style="font-size: 0.85em; margin-top: -5px; margin-bottom: 10px; opacity: 0.8;">Select a pattern, choose 'Place Pattern' mode, then click on the grid.</p>
+        <div class="patterns" id="patternContainer">
+            <!-- Patterns will be added here dynamically -->
+        </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat-item">
+        <span>Generation:</span>
+        <span id="genCount">0</span>
+      </div>
+      <div class="stat-item">
+        <span>Living Cells:</span>
+        <span id="cellCount">0</span>
+      </div>
+      <div class="stat-item">
+        <span>Population Change:</span>
+        <span id="popChange">0</span>
+      </div>
+       <div class="stat-item">
+        <span>Stability:</span>
+        <span id="stability">Stable</span>
+      </div>
+      <div class="stat-item">
+        <span>Actual FPS:</span>
+        <span id="actualFPS">0</span>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <p>Conway's Game of Life is a cellular automaton devised by mathematician John Conway in 1970. Click and drag on the grid to create initial patterns. Experiment with settings and presets!</p>
+  </footer>
+
+  <script src="patterns.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>

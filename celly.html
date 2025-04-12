@@ -1,0 +1,1713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Conway's Game of Life - Interactive Cellular Automata</title>
+  <style>
+    /* ============================================= */
+    /* Styling & Theming */
+    /* ============================================= */
+    :root {
+      --bg-color: #121212;
+      --text-color: #eee;
+      --accent-color: #4CAF50; /* Green */
+      --secondary-color: #2196F3; /* Blue */
+      --tertiary-color: #ff9800; /* Orange */
+      --dead-color: #121212;
+      --grid-color: #333;
+      --button-bg: #333;
+      --button-hover: #444;
+      --button-active: #222;
+      --border-color: #555;
+      --shadow-color: rgba(0, 0, 0, 0.2);
+      --tooltip-bg: #555;
+      --tooltip-text: #fff;
+      --newborn-color: #81C784; /* Lighter Green */
+      --dying-color: #FFAB91;  /* Lighter Orange */
+    }
+
+    [data-theme="light"] {
+      --bg-color: #f5f5f5;
+      --text-color: #222;
+      --accent-color: #4CAF50;
+      --secondary-color: #2196F3;
+      --tertiary-color: #ff9800;
+      --dead-color: #f5f5f5;
+      --grid-color: #ddd;
+      --button-bg: #e0e0e0;
+      --button-hover: #d0d0d0;
+      --button-active: #c0c0c0;
+      --border-color: #bbb;
+      --shadow-color: rgba(0, 0, 0, 0.1);
+      --tooltip-bg: #555;
+      --tooltip-text: #fff;
+      --newborn-color: #A5D6A7;
+      --dying-color: #FFCCBC;
+    }
+
+    * {
+      box-sizing: border-box;
+      /* Subtle transitions for theme changes */
+      transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+    }
+
+    body {
+      background: var(--bg-color);
+      color: var(--text-color);
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* ============================================= */
+    /* Layout & Containers */
+    /* ============================================= */
+    header {
+      width: 100%;
+      max-width: 900px; /* Increased max-width */
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 2rem; /* Slightly larger */
+      color: var(--accent-color);
+      font-weight: 600;
+    }
+
+    h2 {
+      margin: 15px 0 10px 0; /* Added top margin */
+      font-size: 1.2rem;
+      color: var(--secondary-color);
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 5px;
+      font-weight: 500;
+    }
+
+    .container {
+      max-width: 900px; /* Increased max-width */
+      width: 100%;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    .canvas-container {
+      position: relative;
+      margin-bottom: 20px; /* Increased spacing */
+      overflow: hidden;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px var(--shadow-color); /* Enhanced shadow */
+      border: 1px solid var(--border-color); /* Added border here */
+    }
+
+    canvas {
+      /* Removed border here, added to container */
+      image-rendering: pixelated; /* Better for sharp pixel look */
+      image-rendering: crisp-edges;
+      background: var(--dead-color);
+      display: block;
+      width: 100%;
+      cursor: crosshair; /* More indicative cursor */
+    }
+
+    .overlay {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(0, 0, 0, 0.7); /* Slightly darker */
+      padding: 5px 10px; /* Adjusted padding */
+      border-radius: 4px;
+      color: white;
+      font-size: 0.8rem; /* Smaller font */
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      z-index: 10;
+    }
+
+    .canvas-container:hover .overlay {
+      opacity: 1;
+    }
+
+    /* ============================================= */
+    /* Controls & Inputs */
+    /* ============================================= */
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 20px; /* Increased spacing */
+    }
+
+    .controls-group {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+    }
+
+
+    button, select {
+      padding: 8px 16px;
+      font-size: 0.9rem; /* Standardized font size */
+      background: var(--button-bg);
+      color: var(--text-color);
+      border: 1px solid var(--border-color);
+      border-radius: 5px; /* Slightly more rounded */
+      cursor: pointer;
+      transition: background-color 0.2s, transform 0.1s;
+      min-width: 100px;
+      text-align: center;
+    }
+
+    button:hover, select:hover {
+      background: var(--button-hover);
+    }
+
+    button:active {
+      background: var(--button-active);
+      transform: scale(0.98); /* Click feedback */
+    }
+
+    button.active {
+      background: var(--accent-color);
+      color: white;
+      border-color: var(--accent-color);
+    }
+     button.pause {
+      background: var(--tertiary-color);
+      color: white;
+      border-color: var(--tertiary-color);
+     }
+
+
+    .settings-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 15px;
+      margin-bottom: 15px;
+      align-items: center;
+    }
+
+
+    .slider-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 5px 0;
+      flex-wrap: wrap; /* Allow wrapping */
+    }
+
+    label {
+      font-size: 0.9rem;
+      min-width: 100px; /* Reduced min-width */
+      text-align: left;
+      flex-shrink: 0; /* Prevent label from shrinking */
+    }
+
+    input[type="range"] {
+      flex-grow: 1; /* Allow slider to take available space */
+      min-width: 120px;
+      height: 5px; /* Slimmer slider */
+      accent-color: var(--accent-color);
+      cursor: pointer;
+    }
+
+    input[type="color"] {
+      width: 30px;
+      height: 30px;
+      border: 1px solid var(--border-color); /* Added border */
+      border-radius: 4px;
+      cursor: pointer;
+      padding: 2px; /* Small padding inside */
+      background-color: var(--button-bg); /* Background for the picker itself */
+    }
+
+    input[type="number"] {
+        width: 60px;
+        padding: 6px;
+        border-radius: 4px;
+        background: var(--button-bg);
+        color: var(--text-color);
+        border: 1px solid var(--border-color);
+        text-align: center;
+    }
+    /* Hide spinner buttons on number inputs */
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      appearance: none; /* Firefox */
+      margin: 0;
+    }
+    input[type=number] {
+      -moz-appearance: textfield; /* Firefox */
+      appearance: textfield; /* Standard */
+    }
+
+
+    select {
+      min-width: 120px; /* Ensure select isn't too small */
+    }
+
+    .setting-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    /* ============================================= */
+    /* Statistics */
+    /* ============================================= */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); /* Responsive columns */
+      gap: 10px 20px; /* Row and column gap */
+      margin-top: 20px; /* Increased spacing */
+      font-size: 0.9rem;
+      color: var(--text-color);
+      background: var(--button-bg);
+      padding: 15px; /* Increased padding */
+      border-radius: 8px; /* More rounded */
+      border: 1px solid var(--border-color);
+    }
+
+    .stat-item {
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 1px dashed var(--border-color); /* Separator */
+      padding-bottom: 5px;
+    }
+    .stat-item span:last-child {
+      font-weight: bold;
+      color: var(--secondary-color); /* Highlight value */
+    }
+
+    /* ============================================= */
+    /* Theme Toggle */
+    /* ============================================= */
+    .theme-toggle {
+      background: none;
+      border: none;
+      color: var(--text-color);
+      font-size: 1.5rem; /* Larger icon */
+      cursor: pointer;
+      padding: 5px;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.2s;
+    }
+    .theme-toggle:hover {
+        background-color: var(--button-hover);
+    }
+
+    /* ============================================= */
+    /* Patterns */
+    /* ============================================= */
+     .patterns {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); /* Adjust minmax */
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .pattern-btn {
+      text-align: left;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 0.85rem; /* Slightly smaller font */
+      padding: 6px 10px; /* Adjust padding */
+      min-width: unset; /* Remove min-width */
+      background-color: var(--button-bg); /* Default background */
+      border: 1px solid var(--border-color);
+    }
+
+    .pattern-btn.active-pattern {
+       background-color: var(--secondary-color); /* Highlight selected pattern */
+       color: white;
+       border-color: var(--secondary-color);
+       font-weight: bold;
+    }
+
+
+    /* ============================================= */
+    /* Tooltips */
+    /* ============================================= */
+    .tooltip {
+      position: relative;
+      display: inline-block;
+    }
+
+    .tooltip .tooltiptext {
+      visibility: hidden;
+      width: max-content; /* Adjust width based on content */
+      max-width: 200px; /* Max width */
+      background-color: var(--tooltip-bg);
+      color: var(--tooltip-text);
+      text-align: center;
+      border-radius: 6px;
+      padding: 5px 8px; /* Adjusted padding */
+      position: absolute;
+      z-index: 10;
+      bottom: 130%; /* Position above the element */
+      left: 50%;
+      transform: translateX(-50%); /* Center the tooltip */
+      opacity: 0;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+      font-size: 0.8rem; /* Smaller font */
+      pointer-events: none; /* Allow clicks to pass through */
+    }
+
+    /* Tooltip arrow */
+    .tooltip .tooltiptext::after {
+      content: "";
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      margin-left: -5px;
+      border-width: 5px;
+      border-style: solid;
+      border-color: var(--tooltip-bg) transparent transparent transparent;
+    }
+
+
+    .tooltip:hover .tooltiptext {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    /* ============================================= */
+    /* Advanced Settings Toggle & Section */
+    /* ============================================= */
+    .advanced-toggle {
+      width: 100%;
+      text-align: center;
+      margin: 15px 0;
+      font-size: 0.9rem;
+      color: var(--secondary-color);
+      cursor: pointer;
+      padding: 5px;
+      border-radius: 4px;
+      transition: background-color 0.2s;
+      display: inline-block; /* Allows centering */
+    }
+     .advanced-toggle:hover {
+        background-color: var(--button-hover);
+     }
+
+    .advanced-settings {
+        display: grid; /* Use grid for better alignment */
+        grid-template-columns: 1fr;
+        gap: 15px;
+        max-height: 0; /* Changed from height */
+        overflow: hidden;
+        transition: max-height 0.4s ease-out; /* Smoother transition */
+        border-top: 1px solid var(--border-color);
+        padding-top: 0;
+        margin-top: 10px;
+    }
+
+    .advanced-settings.visible {
+      max-height: 1000px; /* Set a large max-height */
+      padding-top: 15px;
+      margin-bottom: 15px;
+    }
+
+    /* ============================================= */
+    /* Animations & Footer */
+    /* ============================================= */
+    .fade-in {
+      animation: fadeIn 0.7s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    footer {
+      margin-top: 30px; /* Increased spacing */
+      padding-top: 15px;
+      border-top: 1px solid var(--border-color);
+      width: 100%;
+      max-width: 900px;
+      font-size: 0.85rem;
+      opacity: 0.8;
+      text-align: center;
+      color: var(--text-color);
+    }
+
+    /* ============================================= */
+    /* Responsiveness */
+    /* ============================================= */
+    @media (max-width: 768px) {
+      h1 { font-size: 1.6rem; }
+      .controls { gap: 8px; }
+      button, select { padding: 7px 12px; font-size: 0.85rem; }
+      .slider-container { flex-direction: column; align-items: stretch; }
+      label { min-width: auto; text-align: left; margin-bottom: 3px; }
+      input[type="range"] { width: 100%; }
+      .settings-grid { grid-template-columns: 1fr; } /* Stack settings */
+      .stats { grid-template-columns: 1fr; gap: 8px 15px; } /* Stack stats */
+      .theme-toggle { font-size: 1.3rem; }
+    }
+
+    @media (max-width: 480px) {
+        body { padding: 10px; }
+        header { margin-bottom: 15px; }
+        h1 { font-size: 1.4rem; }
+        .controls { flex-direction: column; align-items: stretch; }
+        button, select { width: 100%; }
+        .patterns { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
+        .pattern-btn { font-size: 0.8rem; }
+        footer { font-size: 0.75rem; }
+    }
+
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Conway's Game of Life</h1>
+    <div class="tooltip">
+        <button class="theme-toggle" id="themeToggle">🌓</button>
+        <span class="tooltiptext">Toggle Light/Dark Mode</span>
+    </div>
+  </header>
+
+  <div class="container fade-in">
+    <div class="canvas-container">
+      <canvas id="game"></canvas>
+      <div class="overlay" id="canvasOverlay">Click/Drag to Draw</div>
+    </div>
+
+    <div class="controls controls-group">
+         <div class="tooltip">
+            <button id="toggleBtn">Start</button>
+            <span class="tooltiptext">Start/Pause Simulation (Spacebar)</span>
+         </div>
+         <div class="tooltip">
+            <button id="stepBtn">Step</button>
+            <span class="tooltiptext">Advance One Generation (Right Arrow)</span>
+         </div>
+         <div class="tooltip">
+            <button id="randomBtn">Randomize</button>
+            <span class="tooltiptext">Fill grid randomly based on density (R)</span>
+         </div>
+         <div class="tooltip">
+            <button id="clearBtn">Clear</button>
+            <span class="tooltiptext">Clear the grid (C)</span>
+         </div>
+         <div class="tooltip">
+            <button id="gridBtn" class="active">Toggle Grid</button>
+            <span class="tooltiptext">Show/Hide Grid Lines (G)</span>
+         </div>
+    </div>
+
+    <div class="settings-grid">
+        <div class="slider-container">
+          <label for="speedSlider">Speed:</label>
+          <input type="range" id="speedSlider" min="1" max="60" value="15">
+          <span id="speedValue">15 FPS</span>
+        </div>
+
+        <div class="slider-container">
+          <label for="densitySlider">Density:</label>
+          <input type="range" id="densitySlider" min="1" max="100" value="30">
+          <span id="densityValue">30%</span>
+        </div>
+
+        <div class="slider-container">
+          <label for="zoomSlider">Zoom:</label>
+          <input type="range" id="zoomSlider" min="1" max="30" value="10">
+          <span id="zoomValue">10px</span>
+        </div>
+    </div>
+
+
+    <div class="advanced-toggle" id="advancedToggle" role="button" aria-expanded="false" aria-controls="advancedSettings">
+      <span class="arrow">▾</span> Advanced Settings & Patterns <span class="arrow">▾</span>
+    </div>
+
+    <div class="advanced-settings" id="advancedSettings">
+        <div class="settings-grid">
+             <div class="setting-item tooltip">
+                <label for="aliveColorPicker">Cell Color:</label>
+                <input type="color" id="aliveColorPicker" value="#4CAF50">
+                <span class="tooltiptext">Color of living cells</span>
+            </div>
+
+            <div class="setting-item tooltip">
+                <label for="gridColorPicker">Grid Color:</label>
+                <input type="color" id="gridColorPicker" value="#333333">
+                <span class="tooltiptext">Color of grid lines</span>
+            </div>
+
+            <div class="setting-item tooltip">
+                <label for="drawModeSelect">Draw Mode:</label>
+                <select id="drawModeSelect">
+                  <option value="draw">Draw</option>
+                  <option value="erase">Erase</option>
+                  <option value="toggle">Toggle</option>
+                  <option value="pattern">Place Pattern</option>
+                </select>
+                 <span class="tooltiptext">Action when clicking/dragging on grid (D/E/T/P)</span>
+            </div>
+
+             <div class="setting-item tooltip">
+                <label for="wrapEdgesCheck">Wrap Edges:</label>
+                <input type="checkbox" id="wrapEdgesCheck">
+                <span class="tooltiptext">Cells wrap around edges (toroidal) (W)</span>
+            </div>
+
+            <div class="setting-item tooltip">
+                <label for="showNewbornCheck">Highlight New:</label>
+                <input type="checkbox" id="showNewbornCheck">
+                <span class="tooltiptext">Briefly highlight newly born cells</span>
+            </div>
+             <div class="setting-item tooltip">
+                <label for="showDyingCheck">Highlight Dying:</label>
+                <input type="checkbox" id="showDyingCheck">
+                <span class="tooltiptext">Briefly highlight dying cells</span>
+            </div>
+
+            <div class="setting-item tooltip">
+              <label for="colsInput">Grid Cols:</label>
+              <input type="number" id="colsInput" min="10" max="500" value="60">
+              <span class="tooltiptext">Number of columns (width)</span>
+            </div>
+
+            <div class="setting-item tooltip">
+              <label for="rowsInput">Grid Rows:</label>
+              <input type="number" id="rowsInput" min="10" max="500" value="40">
+               <span class="tooltiptext">Number of rows (height)</span>
+            </div>
+
+            <div class="tooltip">
+                <button id="resizeBtn">Resize Grid</button>
+                <span class="tooltiptext">Apply new grid dimensions (clears grid)</span>
+            </div>
+
+        </div>
+
+
+        <h2>Preset Patterns</h2>
+        <p style="font-size: 0.85em; margin-top: -5px; margin-bottom: 10px; opacity: 0.8;">Select a pattern, choose 'Place Pattern' mode, then click on the grid.</p>
+        <div class="patterns" id="patternContainer">
+            <!-- Patterns will be added here dynamically -->
+        </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat-item">
+        <span>Generation:</span>
+        <span id="genCount">0</span>
+      </div>
+      <div class="stat-item">
+        <span>Living Cells:</span>
+        <span id="cellCount">0</span>
+      </div>
+      <div class="stat-item">
+        <span>Population Change:</span>
+        <span id="popChange">0</span>
+      </div>
+       <div class="stat-item">
+        <span>Stability:</span>
+        <span id="stability">Stable</span>
+      </div>
+      <div class="stat-item">
+        <span>Actual FPS:</span>
+        <span id="actualFPS">0</span>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <p>Conway's Game of Life is a cellular automaton devised by mathematician John Conway in 1970. Click and drag on the grid to create initial patterns. Experiment with settings and presets!</p>
+  </footer>
+
+  <script>
+    'use strict'; // Enable strict mode
+
+    // =============================================
+    // Configuration & Game State
+    // =============================================
+    const config = {
+      cellSize: 10,
+      cols: 60,
+      rows: 40,
+      initialDensity: 0.3,
+      fps: 15,
+      showGrid: true,
+      wrapEdges: false,
+      drawMode: 'draw', // draw, erase, toggle, pattern
+      highlightNewborn: false,
+      highlightDying: false,
+      colors: {
+        alive: '#4CAF50',
+        dead: '', // Determined by theme
+        grid: '', // Determined by theme
+        newborn: '#81C784',
+        dying: '#FFAB91'
+      }
+    };
+
+    let grid = [];
+    let nextGrid = [];
+    let displayGrid = []; // Grid used for drawing, potentially with highlight colors
+    let running = false;
+    let generation = 0;
+    let lastTime = 0;
+    let accumulatedTime = 0;
+    let frameCount = 0; // For FPS calculation
+    let fpsInterval = 1000 / config.fps;
+    let animationId = null;
+    let isDrawing = false;
+    let lastCellX = -1;
+    let lastCellY = -1;
+    let currentLivingCells = 0;
+    let lastLivingCells = 0;
+    let stabilityCounter = 0; // Counter for detecting stable states
+    const STABILITY_THRESHOLD = 5; // Generations needed to declare stability
+    let selectedPattern = null; // Key of the selected pattern
+    let lastDrawTime = 0;
+
+
+    // =============================================
+    // Preset Patterns (RLE format would be more compact, but simple array is fine for now)
+    // =============================================
+    const patterns = {
+      // ... (Keep existing patterns)
+      glider: { name: "Glider", description: "Travels diagonally", cells: [[0, 1], [1, 2], [2, 0], [2, 1], [2, 2]] },
+      blinker: { name: "Blinker", description: "Oscillates period 2", cells: [[0, 1], [1, 1], [2, 1]] },
+      toad: { name: "Toad", description: "Oscillates period 2", cells: [[1, 0], [2, 0], [3, 0], [0, 1], [1, 1], [2, 1]] },
+      beacon: { name: "Beacon", description: "Oscillates period 2", cells: [[0, 0], [1, 0], [0, 1], [3, 2], [2, 3], [3, 3]] },
+      pulsar: { name: "Pulsar", description: "Oscillates period 3", cells: [[2, 0], [3, 0], [4, 0], [8, 0], [9, 0], [10, 0],[0, 2], [5, 2], [7, 2], [12, 2],[0, 3], [5, 3], [7, 3], [12, 3],[0, 4], [5, 4], [7, 4], [12, 4],[2, 5], [3, 5], [4, 5], [8, 5], [9, 5], [10, 5],[2, 7], [3, 7], [4, 7], [8, 7], [9, 7], [10, 7],[0, 8], [5, 8], [7, 8], [12, 8],[0, 9], [5, 9], [7, 9], [12, 9],[0, 10], [5, 10], [7, 10], [12, 10],[2, 12], [3, 12], [4, 12], [8, 12], [9, 12], [10, 12]] },
+      lwss: { name: "LWSS", description: "Light Weight Space Ship", cells: [[0, 0], [3, 0], [4, 1], [0, 2], [4, 2], [1, 3], [2, 3], [3, 3], [4, 3]] },
+      mwss: { name: "MWSS", description: "Medium Weight Space Ship", cells: [[0,0],[4,0],[5,1],[0,2],[5,2],[1,3],[2,3],[3,3],[4,3],[5,3]]},
+      hwss: { name: "HWSS", description: "Heavy Weight Space Ship", cells: [[0,0],[5,0],[6,1],[0,2],[6,2],[1,3],[2,3],[3,3],[4,3],[5,3],[6,3]]},
+      gosperGliderGun: { name: "Glider Gun", description: "Generates Gliders", cells: [[24, 0], [22, 1], [24, 1], [12, 2], [13, 2], [20, 2], [21, 2], [34, 2], [35, 2], [11, 3], [15, 3], [20, 3], [21, 3], [34, 3], [35, 3], [0, 4], [1, 4], [10, 4], [16, 4], [20, 4], [21, 4], [0, 5], [1, 5], [10, 5], [14, 5], [16, 5], [17, 5], [22, 5], [24, 5], [10, 6], [16, 6], [24, 6], [11, 7], [15, 7], [12, 8], [13, 8]] },
+      rpentomino: { name: "R-Pentomino", description: "Methuselah (lasts long)", cells: [[1, 0], [2, 0], [0, 1], [1, 1], [1, 2]] },
+      diehard: { name: "Diehard", description: "Vanishes after 130 gens", cells: [[6, 0], [0, 1], [1, 1], [1, 2], [5, 2], [6, 2], [7, 2]] },
+      acorn: { name: "Acorn", description: "Methuselah (lasts long)", cells: [[1, 0], [3, 1], [0, 2], [1, 2], [4, 2], [5, 2], [6, 2]] }
+    };
+
+    // =============================================
+    // DOM Elements
+    // =============================================
+    // Function to safely get DOM elements with error checking
+    function getElement(id) {
+      const element = document.getElementById(id);
+      if (!element) {
+        console.error(`Element with ID '${id}' not found!`);
+      }
+      return element;
+    }
+
+    const canvas = getElement('game');
+    const ctx = canvas ? canvas.getContext('2d') : null;
+    const toggleBtn = getElement('toggleBtn');
+    const randomBtn = getElement('randomBtn');
+    const clearBtn = getElement('clearBtn');
+    const stepBtn = getElement('stepBtn');
+    const gridBtn = getElement('gridBtn');
+    const speedSlider = getElement('speedSlider');
+    const speedValue = getElement('speedValue');
+    const densitySlider = getElement('densitySlider');
+    const densityValue = getElement('densityValue');
+    const zoomSlider = getElement('zoomSlider');
+    const zoomValue = getElement('zoomValue');
+    const genCount = getElement('genCount');
+    const cellCount = getElement('cellCount');
+    const popChange = getElement('popChange');
+    const stability = getElement('stability');
+    const actualFPS = getElement('actualFPS');
+    const themeToggle = getElement('themeToggle');
+    const aliveColorPicker = getElement('aliveColorPicker');
+    const gridColorPicker = getElement('gridColorPicker');
+    const drawModeSelect = getElement('drawModeSelect');
+    const wrapEdgesCheck = getElement('wrapEdgesCheck');
+    const showNewbornCheck = getElement('showNewbornCheck');
+    const showDyingCheck = getElement('showDyingCheck');
+    const advancedToggle = getElement('advancedToggle');
+    const advancedSettings = getElement('advancedSettings');
+    const patternContainer = getElement('patternContainer');
+    const canvasOverlay = getElement('canvasOverlay');
+    const colsInput = getElement('colsInput');
+    const rowsInput = getElement('rowsInput');
+    const resizeBtn = getElement('resizeBtn');
+
+
+    // =============================================
+    // Initialization
+    // =============================================
+    function init() {
+      console.log('Starting initialization...');
+      // Apply saved theme or detect system preference
+      const savedTheme = localStorage.getItem('gameOfLifeTheme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      setTheme(savedTheme || (prefersDark ? 'dark' : 'light'));
+
+      console.log('Theme set, checking DOM elements...');
+
+      // Check if all required elements are available
+      if (!canvas || !ctx) {
+        console.error('Canvas or context is missing - cannot initialize game!');
+        alert('Error: Canvas element not found. The game cannot be initialized.');
+        return;
+      }
+
+      console.log('Canvas and context are valid, setting up UI elements...');
+
+      // Set UI elements to match config - with safety checks
+      if (speedSlider) speedSlider.value = config.fps;
+      if (densitySlider) densitySlider.value = config.initialDensity * 100;
+      if (zoomSlider) zoomSlider.value = config.cellSize;
+      if (wrapEdgesCheck) wrapEdgesCheck.checked = config.wrapEdges;
+      if (aliveColorPicker) aliveColorPicker.value = config.colors.alive;
+      if (gridColorPicker) gridColorPicker.value = config.colors.grid; // Set after theme is determined
+      if (drawModeSelect) drawModeSelect.value = config.drawMode;
+      if (showNewbornCheck) showNewbornCheck.checked = config.highlightNewborn;
+      if (showDyingCheck) showDyingCheck.checked = config.highlightDying;
+      if (colsInput) colsInput.value = config.cols;
+      if (rowsInput) rowsInput.value = config.rows;
+
+      updateCanvasSize();
+      resetGrids();
+      setupEventListeners();
+      updateSpeedDisplay();
+      updateDensityDisplay();
+      updateZoomDisplay();
+      updateOverlayText();
+      populatePatterns();
+
+      // Initial draw without starting loop immediately
+      drawGrid();
+      updateStats();
+
+      console.log("Game of Life Initialized");
+      animationId = requestAnimationFrame(gameLoop); // Start the loop
+    }
+
+    function resetGrids() {
+      console.log('Resetting grids...');
+      try {
+        // Create new grid arrays with proper dimensions
+        grid = createGridArray(config.rows, config.cols);
+        nextGrid = createGridArray(config.rows, config.cols);
+        displayGrid = createGridArray(config.rows, config.cols); // 0: dead, 1: alive, 2: newborn, 3: dying
+
+        console.log(`Grid arrays created with dimensions ${config.rows}x${config.cols}`);
+        console.log('Grid:', grid.length, 'x', grid[0].length);
+        console.log('Display grid:', displayGrid.length, 'x', displayGrid[0].length);
+
+        // Randomize initial state
+        randomizeGrid();
+        copyGridTo(grid, nextGrid); // Ensure nextGrid is initially synced
+        copyGridTo(grid, displayGrid); // Sync display grid initially
+
+        generation = 0;
+        lastLivingCells = currentLivingCells; // Update initial last count
+        stabilityCounter = 0; // Reset stability counter
+
+        updateStats();
+        console.log(`Grids reset (${config.rows}x${config.cols})`);
+      } catch (error) {
+        console.error('Error in resetGrids:', error);
+      }
+    }
+
+    function createGridArray(rows, cols, fill = 0) {
+        // Validate inputs
+        if (typeof rows !== 'number' || typeof cols !== 'number' || rows <= 0 || cols <= 0) {
+            console.error(`Invalid grid dimensions: ${rows}x${cols}`);
+            // Use default values if invalid
+            rows = Math.max(10, rows || 10);
+            cols = Math.max(10, cols || 10);
+        }
+
+        // Using standard arrays for better compatibility
+        try {
+            return Array.from({ length: rows }, () => Array(cols).fill(fill));
+        } catch (error) {
+            console.error('Error creating grid array:', error);
+            // Fallback to manual array creation
+            const grid = [];
+            for (let i = 0; i < rows; i++) {
+                const row = [];
+                for (let j = 0; j < cols; j++) {
+                    row.push(fill);
+                }
+                grid.push(row);
+            }
+            return grid;
+        }
+    }
+
+    function randomizeGrid() {
+        let initialAlive = 0;
+        for (let y = 0; y < config.rows; y++) {
+            for (let x = 0; x < config.cols; x++) {
+                grid[y][x] = Math.random() < config.initialDensity ? 1 : 0;
+                if (grid[y][x] === 1) initialAlive++;
+            }
+        }
+        currentLivingCells = initialAlive;
+    }
+
+    function updateCanvasSize() {
+      canvas.width = config.cols * config.cellSize;
+      canvas.height = config.rows * config.cellSize;
+
+      // Use CSS for display scaling to fit container smoothly
+      const container = document.querySelector('.canvas-container');
+      const containerWidth = container.clientWidth;
+      // Calculate aspect ratios
+      const canvasAspect = canvas.width / canvas.height;
+      const containerAspect = containerWidth / (window.innerHeight * 0.6); // Estimate available height
+
+      // Adjust canvas display size while maintaining aspect ratio
+      if (canvas.width > containerWidth) {
+          canvas.style.width = '100%';
+          canvas.style.height = 'auto';
+      } else {
+          canvas.style.width = canvas.width + 'px';
+          canvas.style.height = canvas.height + 'px';
+      }
+      // Ensure redraw after resize
+      if (ctx) drawGrid();
+      console.log(`Canvas resized: ${canvas.width}x${canvas.height}px, Cell: ${config.cellSize}px`);
+    }
+
+    function updateColorVariables() {
+      const isLightTheme = document.documentElement.dataset.theme === 'light';
+      config.colors.dead = isLightTheme ? '#f5f5f5' : '#121212';
+      config.colors.grid = isLightTheme ? '#dddddd' : '#333333';
+      // Update color pickers if they exist and haven't been manually changed recently
+      if (gridColorPicker && gridColorPicker.value !== config.colors.grid) {
+           // Only update if it's still the default for the theme
+          const lightDefaultGrid = '#dddddd';
+          const darkDefaultGrid = '#333333';
+          if ((isLightTheme && gridColorPicker.value === darkDefaultGrid) || (!isLightTheme && gridColorPicker.value === lightDefaultGrid)) {
+            gridColorPicker.value = config.colors.grid;
+          }
+      }
+      // Redraw needed to apply new dead color
+      drawGrid();
+    }
+
+    // =============================================
+    // Event Listeners Setup
+    // =============================================
+    function setupEventListeners() {
+      console.log('Setting up event listeners...');
+
+      // Helper function to safely add event listeners
+      function addListener(element, event, handler, options) {
+        if (element) {
+          element.addEventListener(event, handler, options);
+        } else {
+          console.error(`Cannot add ${event} listener - element is null`);
+        }
+      }
+
+      // Control buttons
+      addListener(toggleBtn, 'click', toggleRunning);
+      addListener(randomBtn, 'click', handleRandomize);
+      addListener(clearBtn, 'click', handleClear);
+      addListener(stepBtn, 'click', step);
+      addListener(gridBtn, 'click', toggleGrid);
+
+      // Sliders
+      addListener(speedSlider, 'input', updateSpeed);
+      addListener(densitySlider, 'input', updateDensity);
+      addListener(zoomSlider, 'input', updateZoom);
+
+      // Canvas events
+      if (canvas) {
+        addListener(canvas, 'mousedown', handleCanvasMouseDown);
+        addListener(canvas, 'mousemove', handleCanvasMouseMove);
+        addListener(canvas, 'mouseup', handleCanvasMouseUp);
+        addListener(canvas, 'mouseleave', handleCanvasMouseLeave);
+        addListener(canvas, 'contextmenu', (e) => e.preventDefault()); // Prevent context menu
+
+        // Touch events
+        addListener(canvas, 'touchstart', handleCanvasTouchStart, { passive: false });
+        addListener(canvas, 'touchmove', handleCanvasTouchMove, { passive: false });
+        addListener(canvas, 'touchend', handleCanvasTouchEnd);
+      } else {
+        console.error('Canvas element not available for event listeners');
+      }
+
+      // Settings controls
+      addListener(themeToggle, 'click', toggleTheme);
+      addListener(aliveColorPicker, 'input', updateAliveColor);
+      addListener(gridColorPicker, 'input', updateGridColor);
+      addListener(drawModeSelect, 'change', updateDrawMode);
+      addListener(wrapEdgesCheck, 'change', toggleWrapEdges);
+      addListener(showNewbornCheck, 'change', toggleHighlightNewborn);
+      addListener(showDyingCheck, 'change', toggleHighlightDying);
+
+      // Advanced settings
+      addListener(advancedToggle, 'click', toggleAdvancedSettings);
+      addListener(resizeBtn, 'click', handleResizeGrid);
+
+      // Window events
+      window.addEventListener('resize', debounce(updateCanvasSize, 100)); // Debounce resize events
+
+      // Keyboard shortcuts
+      document.addEventListener('keydown', handleKeyPress);
+
+      console.log('Event listeners setup complete');
+    }
+
+    // =============================================
+    // UI Update Functions
+    // =============================================
+    function updateSpeedDisplay() {
+      speedValue.textContent = `${config.fps} FPS`;
+    }
+    function updateDensityDisplay() {
+      densityValue.textContent = `${Math.round(config.initialDensity * 100)}%`;
+    }
+     function updateZoomDisplay() {
+        zoomValue.textContent = `${config.cellSize}px`;
+        // Only update canvas size if zoom actually changes grid pixel dimensions
+        updateCanvasSize();
+    }
+    function updateStats() {
+        genCount.textContent = generation;
+        cellCount.textContent = currentLivingCells;
+
+        const change = currentLivingCells - lastLivingCells;
+        popChange.textContent = `${change >= 0 ? '+' : ''}${change}`;
+        popChange.style.color = change > 0 ? 'var(--accent-color)' : (change < 0 ? 'var(--tertiary-color)' : 'var(--text-color)');
+
+        // Stability Check
+        if (change === 0) {
+            stabilityCounter++;
+        } else {
+            stabilityCounter = 0;
+        }
+        stability.textContent = stabilityCounter >= STABILITY_THRESHOLD ? "Stable" : (running ? "Running" : "Paused");
+        stability.style.color = stabilityCounter >= STABILITY_THRESHOLD ? 'var(--secondary-color)' : 'var(--text-color)';
+    }
+    function updateOverlayText() {
+        switch(config.drawMode) {
+            case 'draw': canvasOverlay.textContent = "Mode: Draw (Click/Drag)"; break;
+            case 'erase': canvasOverlay.textContent = "Mode: Erase (Click/Drag)"; break;
+            case 'toggle': canvasOverlay.textContent = "Mode: Toggle (Click/Drag)"; break;
+            case 'pattern':
+                const patternName = selectedPattern ? patterns[selectedPattern]?.name : 'None';
+                canvasOverlay.textContent = `Mode: Place Pattern (${patternName})`;
+                break;
+            default: canvasOverlay.textContent = "Click/Drag on Grid";
+        }
+    }
+
+    function updateActualFPS(fps) {
+        actualFPS.textContent = fps.toFixed(1);
+    }
+
+    // =============================================
+    // Event Handlers
+    // =============================================
+    function toggleRunning() {
+      running = !running;
+      toggleBtn.textContent = running ? 'Pause' : 'Start';
+      toggleBtn.classList.toggle('active', running); // Use 'active' for Start state maybe?
+      toggleBtn.classList.toggle('pause', running); // Add 'pause' class when running
+
+      if (!running) {
+          // Clear temporary display states when pausing
+          clearHighlights();
+          drawGrid(); // Redraw without highlights
+      }
+      console.log(`Simulation ${running ? 'started' : 'paused'}`);
+    }
+
+    function handleRandomize() {
+        running = false; // Stop simulation
+        toggleBtn.textContent = 'Start';
+        toggleBtn.classList.remove('active', 'pause');
+        resetGrids(); // This now randomizes
+        drawGrid();
+        console.log("Grid randomized");
+    }
+
+    function handleClear() {
+        running = false; // Stop simulation
+        toggleBtn.textContent = 'Start';
+        toggleBtn.classList.remove('active', 'pause');
+
+        for (let y = 0; y < config.rows; y++) {
+            for (let x = 0; x < config.cols; x++) {
+                grid[y][x] = 0;
+                displayGrid[y][x] = 0; // Also clear display grid
+            }
+        }
+        generation = 0;
+        currentLivingCells = 0;
+        lastLivingCells = 0;
+        stabilityCounter = 0;
+        updateStats();
+        drawGrid();
+        console.log("Grid cleared");
+    }
+
+    function step() {
+      if (!running) {
+        calculateNextGeneration();
+        drawGrid();
+      }
+    }
+
+    function toggleGrid() {
+      config.showGrid = !config.showGrid;
+      gridBtn.classList.toggle('active', config.showGrid);
+      drawGrid(); // Redraw to show/hide grid lines
+      console.log(`Grid lines ${config.showGrid ? 'shown' : 'hidden'}`);
+    }
+
+    function updateSpeed(event) {
+      config.fps = parseInt(event.target.value, 10);
+      fpsInterval = 1000 / config.fps;
+      updateSpeedDisplay();
+    }
+
+     function updateDensity(event) {
+      config.initialDensity = parseInt(event.target.value, 10) / 100;
+      updateDensityDisplay();
+      // Optionally, immediately randomize if density changes? Or just use for next randomize click.
+      // Let's keep it for the next randomize click for less disruption.
+    }
+
+     function updateZoom(event) {
+      config.cellSize = parseInt(event.target.value, 10);
+      if (config.cellSize < 1) config.cellSize = 1; // Ensure minimum size
+      updateZoomDisplay(); // This calls updateCanvasSize -> drawGrid
+    }
+
+
+    function handleCanvasInteraction(clientX, clientY, isTouchEvent = false) {
+        const rect = canvas.getBoundingClientRect();
+        // Adjust for canvas scaling if its display size differs from its resolution
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+
+        const canvasX = (clientX - rect.left) * scaleX;
+        const canvasY = (clientY - rect.top) * scaleY;
+
+        const x = Math.floor(canvasX / config.cellSize);
+        const y = Math.floor(canvasY / config.cellSize);
+
+        if (x >= 0 && x < config.cols && y >= 0 && y < config.rows) {
+             if (config.drawMode === 'pattern') {
+                 if (selectedPattern && !isDrawing) { // Place pattern only on initial click/touch, not drag
+                     placePattern(x, y, selectedPattern);
+                     drawGrid(); // Update instantly
+                 }
+             } else {
+                // Avoid redundant updates for the same cell during drag
+                if (isDrawing && x === lastCellX && y === lastCellY && !isTouchEvent) return;
+
+                modifyCell(x, y);
+                lastCellX = x;
+                lastCellY = y;
+
+                // Batch drawing updates for performance during drag
+                const now = performance.now();
+                if (now - lastDrawTime > 16) { // Limit redraws to ~60fps
+                   drawGrid();
+                   lastDrawTime = now;
+                }
+             }
+        }
+    }
+
+     function handleCanvasMouseDown(event) {
+        if (event.button !== 0) return; // Only handle left click
+        isDrawing = true;
+        handleCanvasInteraction(event.clientX, event.clientY);
+    }
+
+    function handleCanvasMouseMove(event) {
+        if (isDrawing && config.drawMode !== 'pattern') { // Don't draw pattern on drag
+            handleCanvasInteraction(event.clientX, event.clientY);
+        }
+    }
+
+     function handleCanvasMouseUp() {
+         if (isDrawing) {
+            isDrawing = false;
+            lastCellX = -1; // Reset last cell tracking
+            lastCellY = -1;
+            drawGrid(); // Final draw after mouse up
+         }
+    }
+    function handleCanvasMouseLeave() {
+         if (isDrawing) {
+            isDrawing = false;
+            lastCellX = -1;
+            lastCellY = -1;
+            drawGrid(); // Final draw if mouse leaves while drawing
+         }
+    }
+
+
+    // Touch Event Handlers
+    function handleCanvasTouchStart(event) {
+        event.preventDefault(); // Prevent scrolling/zooming page
+        if (event.touches.length === 1) {
+            isDrawing = true;
+            const touch = event.touches[0];
+            handleCanvasInteraction(touch.clientX, touch.clientY, true);
+        }
+    }
+
+    function handleCanvasTouchMove(event) {
+        event.preventDefault();
+        if (isDrawing && event.touches.length === 1 && config.drawMode !== 'pattern') {
+            const touch = event.touches[0];
+            handleCanvasInteraction(touch.clientX, touch.clientY, true);
+        }
+    }
+
+    function handleCanvasTouchEnd(event) {
+        event.preventDefault();
+        if (isDrawing) {
+            isDrawing = false;
+            lastCellX = -1;
+            lastCellY = -1;
+             // Need a final draw after touch ends as well
+             drawGrid();
+        }
+    }
+
+
+    function modifyCell(x, y) {
+        let changed = false;
+        const currentState = grid[y][x];
+        let newState = currentState;
+
+        switch (config.drawMode) {
+            case 'draw':
+                if (currentState === 0) {
+                    newState = 1;
+                    changed = true;
+                }
+                break;
+            case 'erase':
+                if (currentState === 1) {
+                    newState = 0;
+                    changed = true;
+                }
+                break;
+            case 'toggle':
+                newState = 1 - currentState; // Toggle 0 to 1, 1 to 0
+                changed = true;
+                break;
+        }
+
+        if (changed) {
+            grid[y][x] = newState;
+            displayGrid[y][x] = newState; // Directly update display grid for immediate feedback
+            // Update cell count immediately for responsiveness
+             if (newState === 1) currentLivingCells++;
+             else currentLivingCells--;
+             lastLivingCells = currentLivingCells; // Reflect manual change in stats
+             updateStats();
+             stabilityCounter = 0; // Reset stability on manual change
+        }
+    }
+
+    function setTheme(themeName) {
+      document.documentElement.dataset.theme = themeName;
+      localStorage.setItem('gameOfLifeTheme', themeName);
+      themeToggle.textContent = themeName === 'dark' ? '☀️' : '🌓'; // Update icon
+      updateColorVariables();
+      console.log(`Theme set to ${themeName}`);
+    }
+
+    function toggleTheme() {
+      const currentTheme = document.documentElement.dataset.theme || 'dark';
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      setTheme(newTheme);
+    }
+
+
+    function updateAliveColor(event) {
+      config.colors.alive = event.target.value;
+      drawGrid(); // Redraw needed
+    }
+    function updateGridColor(event) {
+      config.colors.grid = event.target.value;
+      drawGrid(); // Redraw needed
+    }
+    function updateDrawMode(event) {
+      config.drawMode = event.target.value;
+      updateOverlayText();
+       // Deselect pattern button if switching away from pattern mode
+        if (config.drawMode !== 'pattern' && selectedPattern) {
+            const currentActive = patternContainer.querySelector('.active-pattern');
+            if (currentActive) currentActive.classList.remove('active-pattern');
+            selectedPattern = null;
+        }
+    }
+    function toggleWrapEdges(event) {
+      config.wrapEdges = event.target.checked;
+      console.log(`Wrap edges ${config.wrapEdges ? 'enabled' : 'disabled'}`);
+    }
+    function toggleHighlightNewborn(event) {
+        config.highlightNewborn = event.target.checked;
+        if (!config.highlightNewborn) clearHighlights(2); // Clear newborn highlights if disabled
+        drawGrid();
+    }
+    function toggleHighlightDying(event) {
+        config.highlightDying = event.target.checked;
+         if (!config.highlightDying) clearHighlights(3); // Clear dying highlights if disabled
+        drawGrid();
+    }
+
+    function toggleAdvancedSettings() {
+      const isVisible = advancedSettings.classList.toggle('visible');
+      advancedToggle.setAttribute('aria-expanded', isVisible);
+      // Update arrows
+      const arrows = advancedToggle.querySelectorAll('.arrow');
+      arrows.forEach(arrow => arrow.textContent = isVisible ? '▴' : '▾');
+    }
+
+    function handleResizeGrid() {
+        const newCols = parseInt(colsInput.value, 10);
+        const newRows = parseInt(rowsInput.value, 10);
+
+        if (isNaN(newCols) || isNaN(newRows) || newCols < 10 || newRows < 10 || newCols > 500 || newRows > 500) {
+            alert("Invalid grid dimensions. Columns and Rows must be between 10 and 500.");
+            // Reset inputs to current config
+            colsInput.value = config.cols;
+            rowsInput.value = config.rows;
+            return;
+        }
+
+        // Stop simulation before resizing
+        if (running) {
+            toggleRunning();
+        }
+
+        console.log(`Resizing grid to ${newRows}x${newCols}`);
+        config.cols = newCols;
+        config.rows = newRows;
+
+        // Reset grids and update canvas
+        updateCanvasSize(); // Update canvas physical size first
+        resetGrids();       // Create new grid arrays
+        drawGrid();         // Draw the new empty grid
+    }
+
+    function handleKeyPress(event) {
+        // Ignore keypresses if user is typing in an input field
+        if (event.target.tagName === 'INPUT' || event.target.tagName === 'SELECT') {
+            return;
+        }
+
+        switch(event.key.toLowerCase()) {
+            case ' ': // Spacebar
+                event.preventDefault(); // Prevent page scroll
+                toggleRunning();
+                break;
+            case 'arrowright': // Right Arrow
+                event.preventDefault();
+                step();
+                break;
+            case 'r': // R key
+                handleRandomize();
+                break;
+            case 'c': // C key
+                handleClear();
+                break;
+            case 'g': // G key
+                toggleGrid();
+                break;
+            case 'w': // W key
+                config.wrapEdges = !config.wrapEdges;
+                wrapEdgesCheck.checked = config.wrapEdges;
+                console.log(`Wrap edges toggled via keypress: ${config.wrapEdges}`);
+                break;
+             case 'd': // D for Draw mode
+                config.drawMode = 'draw';
+                drawModeSelect.value = 'draw';
+                updateOverlayText();
+                break;
+             case 'e': // E for Erase mode
+                config.drawMode = 'erase';
+                drawModeSelect.value = 'erase';
+                updateOverlayText();
+                break;
+             case 't': // T for Toggle mode
+                 config.drawMode = 'toggle';
+                 drawModeSelect.value = 'toggle';
+                 updateOverlayText();
+                 break;
+             case 'p': // P for Pattern mode
+                 config.drawMode = 'pattern';
+                 drawModeSelect.value = 'pattern';
+                 updateOverlayText();
+                 break;
+        }
+    }
+
+    // =============================================
+    // Pattern Handling
+    // =============================================
+     function populatePatterns() {
+        patternContainer.innerHTML = ''; // Clear existing
+        for (const key in patterns) {
+            const pattern = patterns[key];
+            const btn = document.createElement('button');
+            btn.textContent = pattern.name;
+            btn.classList.add('pattern-btn');
+            btn.dataset.patternKey = key;
+
+            // Add tooltip on hover for pattern description
+            const tooltip = document.createElement('div');
+            tooltip.classList.add('tooltip');
+            const tooltipText = document.createElement('span');
+            tooltipText.classList.add('tooltiptext');
+            tooltipText.textContent = pattern.description || pattern.name; // Fallback to name
+            tooltip.appendChild(btn);
+            tooltip.appendChild(tooltipText);
+
+
+            btn.addEventListener('click', () => selectPattern(key, btn));
+            patternContainer.appendChild(tooltip);
+        }
+    }
+
+     function selectPattern(key, btnElement) {
+        // Deselect previous button
+        const currentActive = patternContainer.querySelector('.active-pattern');
+        if (currentActive) {
+            currentActive.classList.remove('active-pattern');
+        }
+
+        // Select new button
+        if (selectedPattern === key) {
+            // Clicking the same button deselects it
+            selectedPattern = null;
+             // Optionally switch back to 'draw' mode or keep 'pattern' mode
+            config.drawMode = 'draw'; // Switch back to draw on deselect
+            drawModeSelect.value = 'draw';
+        } else {
+            selectedPattern = key;
+            btnElement.classList.add('active-pattern');
+             // Automatically switch to pattern placement mode
+            config.drawMode = 'pattern';
+            drawModeSelect.value = 'pattern';
+        }
+        updateOverlayText();
+        console.log(`Pattern selected: ${selectedPattern ? patterns[selectedPattern].name : 'None'}`);
+    }
+
+    function placePattern(startX, startY, patternKey) {
+        const patternData = patterns[patternKey];
+        if (!patternData) return;
+
+        const patternCells = patternData.cells;
+        const patternWidth = Math.max(...patternCells.map(c => c[0])) + 1;
+        const patternHeight = Math.max(...patternCells.map(c => c[1])) + 1;
+
+        // Calculate top-left corner to center the pattern roughly
+        const offsetX = Math.floor(patternWidth / 2);
+        const offsetY = Math.floor(patternHeight / 2);
+
+        let cellsPlaced = 0;
+        patternCells.forEach(([px, py]) => {
+            const targetX = startX - offsetX + px;
+            const targetY = startY - offsetY + py;
+
+            // Check bounds (no wrapping during placement)
+            if (targetX >= 0 && targetX < config.cols && targetY >= 0 && targetY < config.rows) {
+                 // Only place if the cell wasn't already alive (avoid double counting)
+                 if (grid[targetY][targetX] === 0) {
+                     cellsPlaced++;
+                 }
+                grid[targetY][targetX] = 1; // Set cell to alive
+                displayGrid[targetY][targetX] = 1; // Update display immediately
+            }
+        });
+
+         // Update cell count after placing
+         currentLivingCells += cellsPlaced;
+         lastLivingCells = currentLivingCells;
+         updateStats();
+         stabilityCounter = 0; // Reset stability
+
+        console.log(`Placed pattern '${patternData.name}' at (${startX}, ${startY})`);
+    }
+
+
+    // =============================================
+    // Core Game Logic
+    // =============================================
+    function calculateNextGeneration() {
+      lastLivingCells = currentLivingCells; // Store count before calculation
+      let nextLivingCells = 0;
+      let cellsBorn = 0;
+      let cellsDied = 0;
+
+      // 1. Compute the next state in `nextGrid` based on `grid`
+      for (let y = 0; y < config.rows; y++) {
+        for (let x = 0; x < config.cols; x++) {
+          const neighbors = countNeighbors(x, y);
+          const isAlive = grid[y][x] === 1;
+
+          // Apply Conway's rules
+          if (isAlive && (neighbors < 2 || neighbors > 3)) {
+            nextGrid[y][x] = 0; // Dies (loneliness or overcrowding)
+            if (config.highlightDying) displayGrid[y][x] = 3; // Mark as dying
+            else displayGrid[y][x] = 0;
+            cellsDied++;
+          } else if (!isAlive && neighbors === 3) {
+            nextGrid[y][x] = 1; // Born
+            if (config.highlightNewborn) displayGrid[y][x] = 2; // Mark as newborn
+            else displayGrid[y][x] = 1;
+            cellsBorn++;
+            nextLivingCells++;
+          } else {
+            nextGrid[y][x] = isAlive ? 1 : 0; // Survives or stays dead
+             // Reset highlights for surviving/dead cells if they weren't born/died this gen
+             if (displayGrid[y][x] > 1) { // Was highlighted
+                 displayGrid[y][x] = nextGrid[y][x]; // Set to actual state
+             } else {
+                displayGrid[y][x] = nextGrid[y][x]; // Keep current state
+             }
+            if (isAlive) nextLivingCells++;
+          }
+        }
+      }
+
+       // 2. Swap grids: `nextGrid` becomes the current `grid` for the next iteration
+       // Avoid creating new arrays each time for performance
+       let temp = grid;
+       grid = nextGrid;
+       nextGrid = temp; // Reuse the old grid array for the next calculation
+
+
+      // Update state variables
+      currentLivingCells = nextLivingCells;
+      generation++;
+      updateStats(); // Update generation count, cell count, stability etc.
+    }
+
+    function countNeighbors(x, y) {
+      let count = 0;
+      for (let i = -1; i <= 1; i++) {
+        for (let j = -1; j <= 1; j++) {
+          if (i === 0 && j === 0) continue; // Skip self
+
+          let neighborX = x + i;
+          let neighborY = y + j;
+
+          if (config.wrapEdges) {
+            // Toroidal wrap-around logic
+            neighborX = (neighborX + config.cols) % config.cols;
+            neighborY = (neighborY + config.rows) % config.rows;
+          }
+
+          // Check bounds if not wrapping or if wrapping handled above
+          if (neighborX >= 0 && neighborX < config.cols && neighborY >= 0 && neighborY < config.rows) {
+            count += grid[neighborY][neighborX];
+          }
+        }
+      }
+      return count;
+    }
+
+     function clearHighlights(typeToClear = -1) {
+         // typeToClear: 2 for newborn, 3 for dying, -1 for both
+        for (let y = 0; y < config.rows; y++) {
+            for (let x = 0; x < config.cols; x++) {
+                if (typeToClear === -1 || displayGrid[y][x] === typeToClear) {
+                   // Set display to match the actual underlying grid state
+                   displayGrid[y][x] = grid[y][x];
+                }
+            }
+        }
+    }
+
+
+    // =============================================
+    // Drawing Function
+    // =============================================
+    function drawGrid() {
+        if (!ctx || !canvas) {
+            console.error('Cannot draw grid: canvas or context is missing');
+            return;
+        }
+
+        try {
+            const currentTime = performance.now();
+            // Clear canvas
+            ctx.fillStyle = config.colors.dead;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Check if displayGrid is properly initialized
+            if (!displayGrid || !displayGrid.length || !displayGrid[0] || !displayGrid[0].length) {
+                console.error('Display grid is not properly initialized');
+                return;
+            }
+
+            // Draw cells
+            for (let y = 0; y < config.rows; y++) {
+                for (let x = 0; x < config.cols; x++) {
+                    // Safety check for array bounds
+                    if (y >= displayGrid.length || x >= displayGrid[y].length) {
+                        continue;
+                    }
+
+                    const cellState = displayGrid[y][x]; // Use displayGrid for drawing
+
+                    if (cellState === 0) continue; // Skip dead cells
+
+                    switch (cellState) {
+                        case 1: ctx.fillStyle = config.colors.alive; break; // Alive
+                        case 2: ctx.fillStyle = config.colors.newborn; break; // Newborn highlight
+                        case 3: ctx.fillStyle = config.colors.dying; break; // Dying highlight
+                        default: continue; // Should not happen
+                    }
+
+                    ctx.fillRect(
+                        x * config.cellSize,
+                        y * config.cellSize,
+                        config.cellSize,
+                        config.cellSize
+                    );
+                }
+            }
+
+            // Update last draw time
+            lastDrawTime = currentTime;
+        } catch (error) {
+            console.error('Error in drawGrid:', error);
+        }
+
+        // Draw grid lines if enabled and cell size is large enough
+        try {
+            if (config.showGrid && config.cellSize > 3) {
+                ctx.strokeStyle = config.colors.grid;
+                ctx.lineWidth = 1; // Ensure sharp lines
+
+                // Draw vertical lines
+                for (let x = 0; x <= config.cols; x++) {
+                    ctx.beginPath();
+                    ctx.moveTo(x * config.cellSize + 0.5, 0); // Offset by 0.5 for crisp lines
+                    ctx.lineTo(x * config.cellSize + 0.5, canvas.height);
+                    ctx.stroke();
+                }
+                // Draw horizontal lines
+                for (let y = 0; y <= config.rows; y++) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y * config.cellSize + 0.5);
+                    ctx.lineTo(canvas.width, y * config.cellSize + 0.5);
+                    ctx.stroke();
+                }
+            }
+        } catch (error) {
+            console.error('Error drawing grid lines:', error);
+        }
+        // console.log(`Draw took: ${(performance.now() - currentTime).toFixed(2)} ms`);
+    }
+
+
+    // =============================================
+    // Game Loop
+    // =============================================
+    function gameLoop(timestamp) {
+      animationId = requestAnimationFrame(gameLoop); // Schedule next frame immediately
+
+      const elapsed = timestamp - lastTime;
+
+      // Calculate actual FPS (smoothed over 1 second)
+      accumulatedTime += elapsed;
+      frameCount++;
+      if (accumulatedTime >= 1000) {
+          const currentFps = frameCount / (accumulatedTime / 1000);
+          updateActualFPS(currentFps);
+          accumulatedTime = 0;
+          frameCount = 0;
+      }
+
+
+      // Control update rate based on desired FPS
+      if (running && elapsed > fpsInterval) {
+        lastTime = timestamp - (elapsed % fpsInterval); // Adjust lastTime to sync better
+
+        // Clear highlights from previous step *before* calculating next gen
+         if (config.highlightNewborn || config.highlightDying) {
+             clearHighlights();
+         }
+
+        calculateNextGeneration();
+        drawGrid(); // Draw the updated grid
+
+      } else if (!running) {
+          // Keep track of time even when paused for FPS calculation
+          lastTime = timestamp;
+      }
+    }
+
+    // =============================================
+    // Utility Functions
+    // =============================================
+    function copyGridTo(sourceGrid, destinationGrid) {
+        for (let y = 0; y < config.rows; y++) {
+            for (let x = 0; x < config.cols; x++) {
+                destinationGrid[y][x] = sourceGrid[y][x];
+            }
+        }
+    }
+
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    // =============================================
+    // Start the application
+    // =============================================
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('DOM fully loaded');
+      try {
+        console.log('Canvas element:', document.getElementById('game'));
+        console.log('Canvas context:', document.getElementById('game').getContext('2d'));
+        init();
+        console.log('Initialization completed');
+      } catch (error) {
+        console.error('Error during initialization:', error);
+      }
+    });
+
+  </script>
+</body>
+</html>
